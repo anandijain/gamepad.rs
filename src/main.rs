@@ -47,7 +47,7 @@ fn main() {
         // Button::LeftTrigger,
         // Button::LeftTrigger2,
         // Button::Start
-        Button::LeftThumb
+        Button::LeftThumb,
     ];
 
     let mut last_lefty = 0.;
@@ -56,6 +56,12 @@ fn main() {
     let mut last_rightx = 0.;
 
     let mouse_ratio = 25.0;
+    let scroll_ratio = 3.0;
+
+    let mut dx = (mouse_ratio * last_leftx) as i32;
+    let mut dy = -1 * (mouse_ratio * last_lefty) as i32;
+    let mut dsx = (scroll_ratio * last_rightx) as i32;
+    let mut dsy = -1 * (scroll_ratio * last_righty) as i32;
 
     let mut is_paused = false;
     let mut last_pause_time = Instant::now();
@@ -64,11 +70,18 @@ fn main() {
     loop {
         // Examine new events
         // probably want a thresholded guard
-        if !is_paused && (last_leftx != 0. || last_lefty != 0.) {
-            let dx = (mouse_ratio * last_leftx) as i32;
-            let dy = -1 * (mouse_ratio * last_lefty) as i32;
-            // println!("dx: {}, dy: {}", dx, dy);
+        if !is_paused && (dx.abs() > 1 || dy.abs() > 1) {
+            println!("dx: {}, dy: {}", dx, dy);
+
             enigo.mouse_move_relative(dx, dy);
+            std::thread::sleep(std::time::Duration::from_micros(1));
+        }
+        if !is_paused && (dsx.abs() > 1 || dsy.abs() > 1) {
+            dsx = (scroll_ratio * last_rightx) as i32;
+            dsy = -1 * (scroll_ratio * last_righty) as i32;
+
+            enigo.mouse_scroll_x(dsx);
+            enigo.mouse_scroll_y(dsy);
             std::thread::sleep(std::time::Duration::from_micros(1));
         }
 
@@ -110,10 +123,22 @@ fn main() {
                 }
 
                 EventType::AxisChanged(stick, val, _) => match stick {
-                    Axis::LeftStickY => last_lefty = val,
-                    Axis::LeftStickX => last_leftx = val,
-                    Axis::RightStickY => last_righty = val,
-                    Axis::RightStickX => last_rightx = val,
+                    Axis::LeftStickY => {
+                        last_lefty = val;
+                        dy = -1 * (mouse_ratio * last_lefty) as i32;
+                    }
+                    Axis::LeftStickX => {
+                        last_leftx = val;
+                        dx = (mouse_ratio * last_leftx) as i32;
+                    }
+                    Axis::RightStickY => {
+                        last_righty = val;
+                        dsy = -1 * (scroll_ratio * last_righty) as i32;
+                    }
+                    Axis::RightStickX => {
+                        last_rightx = val;
+                        dsx = (scroll_ratio * last_rightx) as i32;
+                    }
                     _ => {}
                 },
 
